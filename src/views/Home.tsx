@@ -1,27 +1,80 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Container, Typography, Button, AppBar, Toolbar, Box, IconButton } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+
+import { AppDispatch, RootState } from '../store';
+import { clearUser } from '../store/slices/userSlice';
+import { enqueueSnackbar } from 'notistack';
 
 export function Home() {
-  const [userData, setUserData] = useState<{ email: string | null; id: string | null }>({ email: null, id: null });
+    const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
+    const user = useSelector((state: RootState) => state.user.user);
 
-  useEffect(() => {
-      const userId = '67b7474d2e58c9b8615e4620';
+    const handleIconClick = (e: React.MouseEvent) => {
+        const isShiftPressed = e.shiftKey;
 
-      fetch(`http://localhost:8080/api/v0/users/${userId}`)
-          .then(response => {
-          if (!response.ok) {
-              throw new Error('Failed to fetch user data');
-          }
-          return response.json();
-      })
-      .then(data => {
-          setUserData({ email: data.email, id: data.id });
-      })
-      .catch(error => {
-          console.error('Error fetching user data', error);
-      });
-  }, []);
+        if (isShiftPressed) {
+            const token = user ? user.token : 'default'; 
+            navigator.clipboard.writeText(token)
+            .catch((err) => {
+                console.error("Failed to copy token: ", err);
+            });
+
+            enqueueSnackbar("Token was copied to the clipboard.", { variant: "success" });
+        } else {
+            fetch("http://localhost:8080/api/v0/logout", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${user?.token}`,
+                },
+                credentials: "include", 
+                mode: "cors",
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("Logout failed");
+                }
+
+                dispatch(clearUser());
+                enqueueSnackbar("Logout was successful!", { variant: "success" });
+                navigate("/login");
+            })
+            .catch((error) => {
+                enqueueSnackbar(error.message, { variant: "error" });
+            });
+        }
+    };
+
+    useEffect(() => {
+        // fetch(`http://localhost:8080/api/v0/users/${user?.id}`, {
+        //     method: "GET",
+        //     headers: {
+        //         "Content-Type": "application/json",
+        //         "Authorization": `Bearer ${user?.token}`,
+        //     },
+        //     credentials: "include", 
+        //     mode: "cors",
+        // })
+        // .then((response) => {
+        //     if (!response.ok) {
+        //         return response.text().then((errorText) => {
+        //             throw new Error(errorText);
+        //         });
+        //     }
+
+        //     return response.json();
+        // })
+        // .then((data) => {
+        //     console.log(data);
+        //     enqueueSnackbar(data.id, { variant: "success" });
+        // })
+        // .catch((error) => {
+        //     enqueueSnackbar(error.message, { variant: "error" });
+        // });
+    }, []);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -35,11 +88,10 @@ export function Home() {
 
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="body1" sx={{ mr: 2 }}>
-              {userData.email}
+                { user ? user.email : "default@gmail.com" }
             </Typography>
             <IconButton
-              component={Link}
-              to="/home"
+              onClick={handleIconClick}
               sx={{
                 display: 'flex',
                 justifyContent: 'center',
@@ -52,7 +104,7 @@ export function Home() {
               }}
             >
               <img
-                src={`https://robohash.org/${userData.id}`}
+                src={`https://robohash.org/${user ? user.id : "default_id"}`}
                 alt="User Icon"
                 width={40}
                 height={40}

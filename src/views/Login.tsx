@@ -1,94 +1,113 @@
-import { useState, ChangeEvent, FormEvent, KeyboardEvent } from "react";
+import { useState, ChangeEvent, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Container, Typography, Button, TextField, Stack, Box } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
+import { useDispatch } from 'react-redux';
+
+import { AppDispatch } from '../store';
+import { User, setUser } from '../store/slices/userSlice';
 
 export function Login() {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+    const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+    });
 
-  const handleChangeFormData = (e: ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    const handleChangeFormData = (e: ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
-  const handleLogin = async (e?: FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
+    const handleLogin = (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
 
-    try {
-      const response = await fetch("http://localhost:8080/api/v0/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+        fetch("http://localhost:8080/api/v0/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include", 
+            mode: "cors",
+            body: JSON.stringify(formData)
+        })
+        .then((response) => {
+            if (!response.ok) {
+                return response.text().then((errorText) => {
+                    throw new Error(errorText);
+                });
+            }
 
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
+            const token = response.headers.get("Authorization")?.replace("Bearer ", "");
+            if (!token) {
+                throw new Error("Missing authentication token");
+            }
 
-      const data = await response.json();
-      console.log(data);
-      enqueueSnackbar("Login was successful!", { variant: "success" });
-      navigate("/");
-    } catch (error: any) {
-      console.error(error);
-      enqueueSnackbar(error.message, { variant: "error" });
-    }
-  };
+            return response.json().then((data) => ({
+                data: data,
+                token: token, 
+            }));
+        })
+        .then(({ data, token }) => {
+            const user: User = {
+                id: data.id,
+                email: data.email,
+                role: data.role,
+                token: token, 
+            };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      handleLogin();
-    }
-  };
+            dispatch(setUser(user));
+            enqueueSnackbar("Login was successful!", { variant: "success" });
+            navigate("/home");
+        })
+        .catch((error) => {
+            enqueueSnackbar(error.message, { variant: "error" });
+        });
+    };
 
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-      }}
-    >
-      <Container maxWidth="xs">
-        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-          <img src="https://festteam.bg/wp-content/uploads/2019/11/ft-icon.png" alt="Logo" width={80} height={80} />
+    return (
+        <Box
+        sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "100vh",
+        }}
+        >
+            <Container maxWidth="xs">
+                <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                    <img src="https://festteam.bg/wp-content/uploads/2019/11/ft-icon.png" alt="Logo" width={80} height={80} />
+                </Box>
+                <form onSubmit={handleLogin}>
+                    <Typography variant="h5" align="center" gutterBottom>
+                        Login 
+                    </Typography>
+                    <Stack spacing={2}>
+                        <TextField
+                            fullWidth
+                            label="Email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChangeFormData}
+                            margin="normal"
+                        />
+                        <TextField
+                            fullWidth
+                            label="Password"
+                            name="password"
+                            type="password"
+                            value={formData.password}
+                            onChange={handleChangeFormData}
+                            margin="normal"
+                        />
+                        <Typography variant="body2" align="center">
+                            Don't have an account? <Link to="/register">Register here</Link>
+                        </Typography>
+                        <Button type="submit" variant="contained" color="primary" fullWidth>
+                            Sign In 
+                        </Button>
+                    </Stack>
+                </form>
+            </Container>
         </Box>
-        <form onSubmit={handleLogin} onKeyDown={handleKeyDown}>
-          <Typography variant="h5" align="center" gutterBottom>
-            Login 
-          </Typography>
-          <Stack spacing={2}>
-            <TextField
-              fullWidth
-              label="Email"
-              name="email"
-              value={formData.email}
-              onChange={handleChangeFormData}
-              margin="normal"
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChangeFormData}
-              margin="normal"
-            />
-            <Typography variant="body2" align="center">
-              Don't have an account? <Link to="/register">Register here</Link>
-            </Typography>
-            <Button type="submit" variant="contained" color="primary" fullWidth>
-              Sign In 
-            </Button>
-          </Stack>
-        </form>
-      </Container>
-    </Box>
-  );
+    );
 }
 
