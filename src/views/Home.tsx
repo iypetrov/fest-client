@@ -24,27 +24,9 @@ export function Home() {
 
             enqueueSnackbar("Token was copied to the clipboard.", { variant: "success" });
         } else {
-            fetch("http://localhost:8080/api/v0/logout", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${user?.token}`,
-                },
-                credentials: "include", 
-                mode: "cors",
-            })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Logout failed");
-                }
-
-                dispatch(clearUser());
-                enqueueSnackbar("Logout was successful!", { variant: "success" });
-                navigate("/login");
-            })
-            .catch((error) => {
-                enqueueSnackbar(error.message, { variant: "error" });
-            });
+            dispatch(clearUser());
+            enqueueSnackbar("Logout was successful!", { variant: "success" });
+            navigate("/login");
         }
     };
 
