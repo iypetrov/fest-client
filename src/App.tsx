@@ -8,6 +8,9 @@ import { store } from './store';
 import { Register } from './views/Register';
 import { Login } from './views/Login';
 import { Home } from './views/Home';
+import { EventDetails } from './views/EventDetails';
+import { Checkout } from './views/Checkout';
+import { Confirmation } from './views/Confirmation';
 
 function App() {
     const theme = createTheme();
@@ -21,6 +24,9 @@ function App() {
                         <Route path="/home" element={<Home />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
+                        <Route path="/events/:id" element={<EventDetails />} />
+                        <Route path="/checkout" element={<Checkout />} />
+                        <Route path="/confirmation/:id" element={<Confirmation />} />
                         <Route path="*" element={<Navigate to="/login" />} />
                     </Routes>
                 </Provider>

@@ -1,62 +1,61 @@
-import { useEffect } from 'react';
-import { Container, Typography, Button, AppBar, Toolbar, Box, IconButton } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Container, Typography, Grid, Box, AppBar, Toolbar, IconButton } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { AppDispatch, RootState } from '../store';
 import { clearUser } from '../store/slices/userSlice';
 import { enqueueSnackbar } from 'notistack';
+import { EventCard } from '../components/EventCard';
+
+interface Event {
+  id: string;
+  name: string;
+  thumbnailUrl: string;
+}
 
 export function Home() {
-    const dispatch = useDispatch<AppDispatch>();
-    const navigate = useNavigate();
-    const user = useSelector((state: RootState) => state.user.user);
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+  const user = useSelector((state: RootState) => state.user.user);
+  const [events, setEvents] = useState<Event[]>([]);
 
-    const handleIconClick = (e: React.MouseEvent) => {
-        const isShiftPressed = e.shiftKey;
+  useEffect(() => {
+    fetch("http://localhost:8080/api/v0/events/", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${user?.token}`,
+        },
+        credentials: "include", 
+        mode: "cors",
+      })
+      .then((response) => {
+          if (!response.ok) {
+              return response.text().then((errorText) => {
+                  throw new Error(errorText);
+              });
+          }
 
-        if (isShiftPressed) {
-            const token = user ? user.token : 'default'; 
-            navigator.clipboard.writeText(token)
-            .catch((err) => {
-                console.error("Failed to copy token: ", err);
-            });
+          return response.json();
+      })
+      .then(data => setEvents(data))
+      .catch(error => {
+          console.error("Error fetching events:", error);
+          enqueueSnackbar("Failed to load events", { variant: "error" });
+      });
+  }, []);
 
-            enqueueSnackbar("Token was copied to the clipboard.", { variant: "success" });
-        } else {
-            dispatch(clearUser());
-            enqueueSnackbar("Logout was successful!", { variant: "success" });
-            navigate("/login");
-        }
-    };
-
-    useEffect(() => {
-        // fetch(`http://localhost:8080/api/v0/users/${user?.id}`, {
-        //     method: "GET",
-        //     headers: {
-        //         "Content-Type": "application/json",
-        //         "Authorization": `Bearer ${user?.token}`,
-        //     },
-        //     credentials: "include", 
-        //     mode: "cors",
-        // })
-        // .then((response) => {
-        //     if (!response.ok) {
-        //         return response.text().then((errorText) => {
-        //             throw new Error(errorText);
-        //         });
-        //     }
-
-        //     return response.json();
-        // })
-        // .then((data) => {
-        //     console.log(data);
-        //     enqueueSnackbar(data.id, { variant: "success" });
-        // })
-        // .catch((error) => {
-        //     enqueueSnackbar(error.message, { variant: "error" });
-        // });
-    }, []);
+  const handleIconClick = (e: React.MouseEvent) => {
+    if (e.shiftKey) {
+      navigator.clipboard.writeText(user?.token || 'default');
+      enqueueSnackbar("Token copied!", { variant: "success" });
+    } else {
+      dispatch(clearUser());
+      enqueueSnackbar("Logged out!", { variant: "success" });
+      navigate("/login");
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -72,41 +71,21 @@ export function Home() {
             <Typography variant="body1" sx={{ mr: 2 }}>
                 { user ? user.email : "default@gmail.com" }
             </Typography>
-            <IconButton
-              onClick={handleIconClick}
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                backgroundColor: 'white', 
-                overflow: 'hidden',
-              }}
-            >
-              <img
-                src={`https://robohash.org/${user ? user.id : "default_id"}`}
-                alt="User Icon"
-                width={40}
-                height={40}
-                style={{ borderRadius: '50%' }}
-              />
+            <IconButton onClick={handleIconClick} sx={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: 'white' }}>
+              <img src={`https://robohash.org/${user ? user.id : "default_id"}`} alt="User Icon" width={40} height={40} style={{ borderRadius: '50%' }} />
             </IconButton>
           </Box>
         </Toolbar>
       </AppBar>
 
       <Container sx={{ flexGrow: 1, mt: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          Welcome to the Home Page
-        </Typography>
-        <Button component={Link} to="/login" variant="contained" color="primary" sx={{ mr: 2 }}>
-          Login
-        </Button>
-        <Button component={Link} to="/register" variant="outlined" color="secondary">
-          Register
-        </Button>
+        <Grid container spacing={2}>
+          {events.map(event => (
+            <Grid item key={event.id} xs={12} sm={6} md={4}>
+              <EventCard id={event.id} name={event.name} thumbnailUrl={event.thumbnailUrl} />
+            </Grid>
+          ))}
+        </Grid>
       </Container>
     </Box>
   );
