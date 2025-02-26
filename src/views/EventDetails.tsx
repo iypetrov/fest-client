@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Container, Typography, Card, CardMedia, CardContent, Box, Button } from "@mui/material";
+import { Container, Typography, Card, CardMedia, CardContent, Box } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
 import { useSelector } from "react-redux";
 
@@ -103,7 +103,7 @@ export function EventDetails() {
   }, [id]);
 
   const handleCheckout = (ticketType: string, price: number) => {
-    navigate(`/checkout?eventId=${id}&ticketType=${ticketType}&price=${price}`);
+    navigate(`/checkout?eventId=${id}&type=${ticketType}&price=${price}`);
   };
 
   if (!event) {

@@ -10,7 +10,7 @@ import { Login } from './views/Login';
 import { Home } from './views/Home';
 import { EventDetails } from './views/EventDetails';
 import { Checkout } from './views/Checkout';
-import { Confirmation } from './views/Confirmation';
+import { PaymentStatus } from './views/PaymentStatus';
 
 function App() {
     const theme = createTheme();
@@ -26,7 +26,7 @@ function App() {
                         <Route path="/register" element={<Register />} />
                         <Route path="/events/:id" element={<EventDetails />} />
                         <Route path="/checkout" element={<Checkout />} />
-                        <Route path="/confirmation/:id" element={<Confirmation />} />
+                        <Route path="/payment/:id" element={<PaymentStatus/>} />
                         <Route path="*" element={<Navigate to="/login" />} />
                     </Routes>
                 </Provider>

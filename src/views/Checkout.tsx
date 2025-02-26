@@ -1,82 +1,85 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Container, Typography, Box, Button, TextField } from "@mui/material";
+import { Container, Typography, Box } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
+import { useSelector } from "react-redux";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+
+import { RootState } from "../store";
+import { PaymentForm } from "../components/PaymentForm";
 
 export function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [ticketDetails, setTicketDetails] = useState({
-    eventId: "",
-    ticketType: "",
-    price: 0,
-    quantity: 1,
-    totalPrice: 0,
-  });
+  const user = useSelector((state: RootState) => state.user.user);
+
+  const searchParams = new URLSearchParams(location.search);
+  const eventId = searchParams.get("eventId");
+  const price = parseFloat(searchParams.get("price") || "0");
+  const type = searchParams.get("type");
+
+  const [publishableJwt, setPublishableJwt] = useState("");
+  const [ticketId, setTicketId] = useState("");
+  const stripePromise = useMemo(() => (publishableJwt ? loadStripe(publishableJwt) : null), [publishableJwt]);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const eventId = searchParams.get("eventId");
-    const ticketType = searchParams.get("ticketType");
-    const price = parseFloat(searchParams.get("price") || "0");
+      fetch("http://localhost:8080/api/v0/payments/publishable-key", {
+          method: "GET",
+          headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${user?.token}`,
+          },
+          credentials: "include",
+          mode: "cors",
+      })
+      .then((res) => res.json())
+      .then((data) => {
+          setPublishableJwt(data.publishableKey);
+      })
+      .catch((err) => {
+          console.error("Error fetching publishable key:", err);
+          enqueueSnackbar("Failed to create payment form", { variant: "error" });
+      });
 
-    if (eventId && ticketType && price) {
-      setTicketDetails((prev) => ({
-        ...prev,
-        eventId,
-        ticketType,
-        price,
-        totalPrice: price,
-      }));
-    } else {
-      navigate("/home"); 
-    }
-  }, [location.search, navigate]);
+      const urlAvailableTickets = new URL("http://localhost:8080/api/v0/tickets/available");
+      urlAvailableTickets.searchParams.append("eventId", eventId!);
+      urlAvailableTickets.searchParams.append("price", price!.toString());
+      urlAvailableTickets.searchParams.append("type", type!);
+      fetch(urlAvailableTickets.toString(), {
+          method: "GET",
+          headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${user?.token}`,
+          },
+          credentials: "include",
+          mode: "cors",
+      })
+      .then((res) => res.json())
+      .then((ticket) => {
+          setTicketId(ticket.id);
+      })
+      .catch((err) => {
+          console.error("Error fetching available ticket:", err);
+          enqueueSnackbar("Failed to find available ticket", { variant: "error" });
+      });
+  }, [location.search, navigate, user?.token]);
 
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const quantity = parseInt(e.target.value, 10) || 1;
-    setTicketDetails((prev) => ({
-      ...prev,
-      quantity,
-      totalPrice: prev.price * quantity,
-    }));
-  };
-
-  const handleCheckoutSubmit = () => {
-    // Placeholder for actual payment logic
-    // You would make an API call here to process the payment and handle success/failure
-
-    enqueueSnackbar("Checkout successful!", { variant: "success" });
-    // TODO: pass the payment's id
-    navigate(`/confirmation/${ticketDetails.eventId}`); 
-  };
 
   return (
     <Container maxWidth="md" sx={{ display: "flex", flexDirection: "column", alignItems: "center", mt: 4 }}>
       <Typography variant="h4" gutterBottom>Checkout</Typography>
       <Box sx={{ width: "100%", p: 3, border: "1px solid #ddd", borderRadius: 2, boxShadow: 2 }}>
-        <Typography variant="h6">{ticketDetails.ticketType} Ticket</Typography>
-        <Typography variant="body1">Price per Ticket: ${ticketDetails.price.toFixed(2)}</Typography>
-        <TextField
-          label="Quantity"
-          type="number"
-          value={ticketDetails.quantity}
-          onChange={handleQuantityChange}
-          fullWidth
-          sx={{ mt: 2 }}
-          InputProps={{ inputProps: { min: 1 } }}
-        />
+        <Typography variant="h6">{ type } Ticket</Typography>
+        <Typography variant="body1">Price per Ticket: ${price.toFixed(2)}</Typography>
         <Typography variant="h6" sx={{ mt: 2 }}>
-          Total Price: ${ticketDetails.totalPrice.toFixed(2)}
+          Total Price: ${price.toFixed(2)}
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ mt: 3 }}
-          onClick={handleCheckoutSubmit}
-        >
-          Complete Checkout
-        </Button>
+        {stripePromise && (
+          <Elements stripe={stripePromise}>
+            <PaymentForm price= {price} userId={user!.id} ticketId={ticketId} />
+          </Elements>
+        )}
       </Box>
     </Container>
   );

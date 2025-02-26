@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Container, Typography, Box } from "@mui/material";
 
-export function Confirmation() {
+export function PaymentStatus() {
   const navigate = useNavigate();
 
   return (
