@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Container, Typography, Box } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
@@ -19,29 +19,10 @@ export function Checkout() {
   const price = parseFloat(searchParams.get("price") || "0");
   const type = searchParams.get("type");
 
-  const [publishableJwt, setPublishableJwt] = useState("");
   const [ticketId, setTicketId] = useState("");
-  const stripePromise = useMemo(() => (publishableJwt ? loadStripe(publishableJwt) : null), [publishableJwt]);
+  const stripePromise = loadStripe("pk_test_51Q7K6uFb9GGnrUxlNysV5xIJHXvwVgSRHOSoSnPB6SAb7JBwPQfbX1ImeekURPYbcODf7Ht3MeppBRgtWvBHxaN500TremkxZ2");
 
   useEffect(() => {
-      fetch("http://localhost:8080/api/v0/payments/publishable-key", {
-          method: "GET",
-          headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${user?.token}`,
-          },
-          credentials: "include",
-          mode: "cors",
-      })
-      .then((res) => res.json())
-      .then((data) => {
-          setPublishableJwt(data.publishableKey);
-      })
-      .catch((err) => {
-          console.error("Error fetching publishable key:", err);
-          enqueueSnackbar("Failed to create payment form", { variant: "error" });
-      });
-
       const urlAvailableTickets = new URL("http://localhost:8080/api/v0/tickets/available");
       urlAvailableTickets.searchParams.append("eventId", eventId!);
       urlAvailableTickets.searchParams.append("price", price!.toString());
